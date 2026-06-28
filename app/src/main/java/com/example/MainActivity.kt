@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DeveloperMode
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,10 +31,18 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.example.ui.AddWebsiteDialog
 import com.example.ui.DashboardScreen
+import com.example.ui.DeveloperDashboardScreen
 import com.example.ui.theme.MyApplicationTheme
 
 class MainActivity : ComponentActivity() {
-    private val viewModel: MainViewModel by viewModels { MainViewModel.Factory }
+    private val mainViewModel: MainViewModel by viewModels { MainViewModel.Factory }
+    private val developerViewModel: DeveloperViewModel by viewModels {
+        object : androidx.lifecycle.ViewModelProvider.Factory {
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return DeveloperViewModel(applicationContext) as T
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,36 +51,44 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MyApplicationTheme {
-                val state by viewModel.subscriptionState.collectAsState()
-                val subscriptions by viewModel.allSubscriptions.collectAsState()
-                var showAddDialog by remember { mutableStateOf(false) }
-
+                var selectedTab by remember { mutableIntStateOf(0) }
+                
                 Scaffold(
-                    modifier = Modifier.fillMaxSize()
-                ) { innerPadding ->
-                    DashboardScreen(
-                        subscriptions = subscriptions,
-                        onAddClick = { showAddDialog = true },
-                        onDeleteClick = { viewModel.unsubscribe(it) },
-                        modifier = Modifier.padding(innerPadding)
-                    )
-
-                    if (showAddDialog) {
-                        AddWebsiteDialog(
-                            onDismiss = { showAddDialog = false },
-                            onConfirm = {
-                                viewModel.subscribe(it)
-                                showAddDialog = false
-                            }
-                        )
+                    modifier = Modifier.fillMaxSize(),
+                    bottomBar = {
+                        NavigationBar {
+                            NavigationBarItem(
+                                selected = selectedTab == 0,
+                                onClick = { selectedTab = 0 },
+                                icon = { Icon(Icons.Default.Explore, contentDescription = null) },
+                                label = { Text("Explore") }
+                            )
+                            NavigationBarItem(
+                                selected = selectedTab == 1,
+                                onClick = { 
+                                    selectedTab = 1
+                                    developerViewModel.loadWebsites()
+                                },
+                                icon = { Icon(Icons.Default.DeveloperMode, contentDescription = null) },
+                                label = { Text("Manage") }
+                            )
+                        }
                     }
-
-                    // Show Subscription Status Overlay
-                    if (state !is SubscriptionState.Idle) {
-                        SubscriptionOverlay(
-                            state = state,
-                            onDismiss = { viewModel.resetState() }
+                ) { innerPadding ->
+                    when (selectedTab) {
+                        0 -> UserDashboard(
+                            viewModel = mainViewModel,
+                            modifier = Modifier.padding(innerPadding)
                         )
+                        1 -> {
+                            val devState by developerViewModel.state.collectAsState()
+                            DeveloperDashboardScreen(
+                                state = devState,
+                                onCreateClick = { id, name -> developerViewModel.createWebsite(id, name) },
+                                onDeleteClick = { id -> developerViewModel.deleteWebsite(id) },
+                                modifier = Modifier.padding(innerPadding)
+                            )
+                        }
                     }
                 }
             }
@@ -87,8 +105,40 @@ class MainActivity : ComponentActivity() {
         if (data != null && data.scheme == "pushnotify" && data.host == "subscribe") {
             val websiteId = data.getQueryParameter("website_id")
             if (websiteId != null) {
-                viewModel.subscribe(websiteId)
+                mainViewModel.subscribe(websiteId)
             }
+        }
+    }
+}
+
+@Composable
+fun UserDashboard(viewModel: MainViewModel, modifier: Modifier = Modifier) {
+    val state by viewModel.subscriptionState.collectAsState()
+    val subscriptions by viewModel.allSubscriptions.collectAsState()
+    var showAddDialog by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        DashboardScreen(
+            subscriptions = subscriptions,
+            onAddClick = { showAddDialog = true },
+            onDeleteClick = { viewModel.unsubscribe(it) }
+        )
+
+        if (showAddDialog) {
+            AddWebsiteDialog(
+                onDismiss = { showAddDialog = false },
+                onConfirm = {
+                    viewModel.subscribe(it)
+                    showAddDialog = false
+                }
+            )
+        }
+
+        if (state !is SubscriptionState.Idle) {
+            SubscriptionOverlay(
+                state = state,
+                onDismiss = { viewModel.resetState() }
+            )
         }
     }
 }
