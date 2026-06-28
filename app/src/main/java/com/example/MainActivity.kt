@@ -16,10 +16,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -28,11 +25,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import com.example.ui.AddWebsiteDialog
+import com.example.ui.DashboardScreen
 import com.example.ui.theme.MyApplicationTheme
 
 class MainActivity : ComponentActivity() {
-    private val viewModel: MainViewModel by viewModels()
+    private val viewModel: MainViewModel by viewModels { MainViewModel.Factory }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,14 +42,36 @@ class MainActivity : ComponentActivity() {
         setContent {
             MyApplicationTheme {
                 val state by viewModel.subscriptionState.collectAsState()
+                val subscriptions by viewModel.allSubscriptions.collectAsState()
+                var showAddDialog by remember { mutableStateOf(false) }
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize()
                 ) { innerPadding ->
-                    SubscriptionScreen(
-                        state = state,
+                    DashboardScreen(
+                        subscriptions = subscriptions,
+                        onAddClick = { showAddDialog = true },
+                        onDeleteClick = { viewModel.unsubscribe(it) },
                         modifier = Modifier.padding(innerPadding)
                     )
+
+                    if (showAddDialog) {
+                        AddWebsiteDialog(
+                            onDismiss = { showAddDialog = false },
+                            onConfirm = {
+                                viewModel.subscribe(it)
+                                showAddDialog = false
+                            }
+                        )
+                    }
+
+                    // Show Subscription Status Overlay
+                    if (state !is SubscriptionState.Idle) {
+                        SubscriptionOverlay(
+                            state = state,
+                            onDismiss = { viewModel.resetState() }
+                        )
+                    }
                 }
             }
         }
@@ -72,108 +94,84 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+fun SubscriptionOverlay(
+    state: SubscriptionState,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            if (state !is SubscriptionState.Loading) {
+                Button(onClick = onDismiss) {
+                    Text("Got it")
+                }
+            }
+        },
+        text = {
+            SubscriptionScreen(state = state)
+        },
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    )
+}
+
+@Composable
 fun SubscriptionScreen(state: SubscriptionState, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.surface,
-                        MaterialTheme.colorScheme.surfaceVariant
-                    )
-                )
-            ),
+            .fillMaxWidth()
+            .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(32.dp)
+            verticalArrangement = Arrangement.Center
         ) {
-            AsyncImage(
-                model = R.drawable.hero_push_notify_1782677804345,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(200.dp)
-                    .padding(bottom = 32.dp)
-            )
-
             Icon(
                 imageVector = Icons.Default.NotificationsActive,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(80.dp)
+                modifier = Modifier.size(64.dp)
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Push Notify",
-                style = MaterialTheme.typography.headlineLarge,
+                text = "Subscription Status",
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            Text(
-                text = "Get real-time updates from your favorite websites.",
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             AnimatedVisibility(visible = state is SubscriptionState.Loading) {
                 CircularProgressIndicator()
             }
 
             AnimatedVisibility(visible = state is SubscriptionState.Success) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF2E7D32))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Successfully subscribed!",
-                            color = Color(0xFF2E7D32),
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(48.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Successfully subscribed!",
+                        color = Color(0xFF2E7D32),
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
 
             AnimatedVisibility(visible = state is SubscriptionState.Error) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = (state as SubscriptionState.Error).message,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = (state as SubscriptionState.Error).message,
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center
+                    )
                 }
-            }
-
-            if (state is SubscriptionState.Idle) {
-                Text(
-                    text = "Waiting for subscription link...",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.secondary
-                )
             }
         }
     }
