@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "690620127903",
+    "project_id": "push-notify-saas",
+    "storage_bucket": "push-notify-saas.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:690620127903:android:5aa3ba851c53e46dea20aa",
+        "android_client_info": {
+          "package_name": "com.package.pushnotifysaas"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlb3Q_QinwVJ5imXHdThxTMn-c9KFiTxs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
