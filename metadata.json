@@ -1,0 +1,6 @@
+{
+  "name": "Push Notify SaaS",
+  "description": "A SaaS push notification platform that allows website owners to send notifications to their Android app users.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
