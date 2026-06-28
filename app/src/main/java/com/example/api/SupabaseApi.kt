@@ -16,6 +16,13 @@ interface SupabaseApi {
     ): Response<Unit>
 
     @GET("rest/v1/websites")
+    suspend fun getWebsiteById(
+        @Header("apikey") apiKey: String,
+        @Header("Authorization") bearerToken: String,
+        @Query("id") id: String
+    ): Response<List<Website>>
+
+    @GET("rest/v1/websites")
     suspend fun getWebsites(
         @Header("apikey") apiKey: String,
         @Header("Authorization") bearerToken: String,

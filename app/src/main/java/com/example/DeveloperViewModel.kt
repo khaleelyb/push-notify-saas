@@ -59,6 +59,7 @@ class DeveloperViewModel(private val context: Context) : ViewModel() {
 
     fun createWebsite(id: String, name: String) {
         viewModelScope.launch {
+            _state.value = DeveloperState.Loading
             try {
                 val response = supabaseApi.createWebsite(
                     apiKey = BuildConfig.SUPABASE_ANON_KEY,
@@ -67,15 +68,18 @@ class DeveloperViewModel(private val context: Context) : ViewModel() {
                 )
                 if (response.isSuccessful) {
                     loadWebsites()
+                } else {
+                    _state.value = DeveloperState.Error("Failed to create website: ${response.code()}")
                 }
             } catch (e: Exception) {
-                // Handle error
+                _state.value = DeveloperState.Error(e.message ?: "Unknown error")
             }
         }
     }
 
     fun deleteWebsite(id: String) {
         viewModelScope.launch {
+            _state.value = DeveloperState.Loading
             try {
                 val response = supabaseApi.deleteWebsite(
                     apiKey = BuildConfig.SUPABASE_ANON_KEY,
@@ -84,9 +88,11 @@ class DeveloperViewModel(private val context: Context) : ViewModel() {
                 )
                 if (response.isSuccessful) {
                     loadWebsites()
+                } else {
+                    _state.value = DeveloperState.Error("Failed to delete website: ${response.code()}")
                 }
             } catch (e: Exception) {
-                // Handle error
+                _state.value = DeveloperState.Error(e.message ?: "Unknown error")
             }
         }
     }

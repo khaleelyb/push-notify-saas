@@ -56,7 +56,28 @@ class MainViewModel(private val repository: SubscriptionRepository) : ViewModel(
                     return@launch
                 }
 
-                val token = FirebaseMessaging.getInstance().getToken().await()
+                // Fetch website name from API so we display it properly in the list
+                val websiteName = try {
+                    val websiteResponse = supabaseApi.getWebsiteById(
+                        apiKey = BuildConfig.SUPABASE_ANON_KEY,
+                        bearerToken = "Bearer ${BuildConfig.SUPABASE_ANON_KEY}",
+                        id = "eq.$websiteId"
+                    )
+                    websiteResponse.body()?.firstOrNull()?.name ?: websiteId
+                } catch (e: Exception) {
+                    websiteId // fallback to ID if lookup fails
+                }
+
+                val token = try {
+                    FirebaseMessaging.getInstance().getToken().await()
+                } catch (e: Exception) {
+                    _subscriptionState.value = SubscriptionState.Error(
+                        "FCM registration failed: ${e.javaClass.simpleName}: ${e.message ?: "could not get device token"}. " +
+                        "Please verify your google-services.json matches your applicationId and Firebase is fully configured."
+                    )
+                    return@launch
+                }
+
                 val response = supabaseApi.registerSubscriber(
                     apiKey = BuildConfig.SUPABASE_ANON_KEY,
                     bearerToken = "Bearer ${BuildConfig.SUPABASE_ANON_KEY}",
@@ -64,10 +85,11 @@ class MainViewModel(private val repository: SubscriptionRepository) : ViewModel(
                 )
 
                 if (response.isSuccessful) {
-                    repository.insert(SubscriptionEntity(websiteId, websiteId)) // Using ID as name for now
+                    repository.insert(SubscriptionEntity(websiteId, websiteName))
                     _subscriptionState.value = SubscriptionState.Success(websiteId)
                 } else {
                     _subscriptionState.value = SubscriptionState.Error("Failed to subscribe: ${response.code()}")
+
                 }
             } catch (e: Exception) {
                 _subscriptionState.value = SubscriptionState.Error(e.message ?: "Unknown error")
@@ -90,6 +112,14 @@ class MainViewModel(private val repository: SubscriptionRepository) : ViewModel(
         _subscriptionState.value = SubscriptionState.Idle
     }
 
+    fun setPermissionDenied() {
+        // Only surface if not already in a meaningful state (e.g. mid-subscribe)
+        if (_subscriptionState.value is SubscriptionState.Idle) {
+            _subscriptionState.value = SubscriptionState.Error(
+                "Notification permission denied. You won't receive push notifications."
+            )
+        }
+    }
     companion object {
         val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")

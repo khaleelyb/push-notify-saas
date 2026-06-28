@@ -1,11 +1,14 @@
 package com.example
 
+import android.Manifest
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -28,7 +31,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
-import coil.compose.AsyncImage
 import com.example.ui.AddWebsiteDialog
 import com.example.ui.DashboardScreen
 import com.example.ui.DeveloperDashboardScreen
@@ -44,9 +46,21 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // Launcher for POST_NOTIFICATIONS permission (Android 13+)
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (!granted) {
+            // Permission denied — FCM token fetch will succeed but notifications
+            // won't be shown on screen. We surface this in the UI via the ViewModel.
+            mainViewModel.setPermissionDenied()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        requestNotificationPermissionIfNeeded()
         handleIntent(intent)
 
         setContent {
@@ -107,6 +121,12 @@ class MainActivity : ComponentActivity() {
             if (websiteId != null) {
                 mainViewModel.subscribe(websiteId)
             }
+        }
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 }

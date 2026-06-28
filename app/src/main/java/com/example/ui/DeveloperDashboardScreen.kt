@@ -1,7 +1,6 @@
 package com.example.ui
 
 import androidx.compose.animation.*
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,7 +13,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
@@ -23,9 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.example.DeveloperState
-import com.example.R
 import com.example.data.Website
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -89,16 +85,6 @@ fun DeveloperDashboardScreen(
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            item {
-                                AsyncImage(
-                                    model = R.drawable.hero_developer_hub_1782680612823,
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(180.dp)
-                                        .clip(RoundedCornerShape(24.dp))
-                                )
-                            }
                             items(state.websites) { website ->
                                 ManagedWebsiteItem(
                                     website = website,
@@ -110,7 +96,7 @@ fun DeveloperDashboardScreen(
                         }
                     }
                 }
-                else -> {}
+                is DeveloperState.Idle -> { DeveloperEmptyState(modifier = Modifier.align(Alignment.Center)) }
             }
 
             if (showCreateDialog) {
